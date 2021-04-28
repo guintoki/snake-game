@@ -3,11 +3,11 @@ import './snake.css';
 
 export default class Snake extends Component {
     state = {
-        tickTime: 200,
+        speed: 200,
         rows: 25,
         cols: 25,
         grid: [],
-        food: {},
+        apple: {},
         snake: {
             head: {},
             tail: [],
@@ -16,6 +16,8 @@ export default class Snake extends Component {
         died: false,
         score: 0,
         scoreFactor: 10,
+        level: 1,
+        lastScoreup: 0,
     };
 
     constructor(props) {
@@ -30,7 +32,6 @@ export default class Snake extends Component {
         }
     }
 
-    // TODO: snake and food begins at the center
     getCenterOfGrid() {
         return {
             row: Math.floor((this.state.rows - 1) / 2),
@@ -48,13 +49,13 @@ export default class Snake extends Component {
         const {
             rows,
             cols,
-            food,
+            apple,
             snake
         } = state;
 
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
-                const isFood = (food.row === row && food.col === col);
+                const isApple = (apple.row === row && apple.col === col);
                 const isHead = (snake.head.row === row && snake.head.col === col);
                 let isTail = false;
                 snake.tail.forEach(t => {
@@ -66,7 +67,7 @@ export default class Snake extends Component {
                 grid.push({
                     row,
                     col,
-                    isFood,
+                    isApple,
                     isHead,
                     isTail,
                 })
@@ -87,13 +88,15 @@ export default class Snake extends Component {
             let {
                 currentDirection,
                 snake,
-                food
+                apple
             } = state;
             let died = false;
+
 
             let {
                 tail
             } = snake;
+            console.log(tail)
 
             const {
                 row,
@@ -104,33 +107,31 @@ export default class Snake extends Component {
                 col
             };
 
-            // When game ove is shown, stop the tick
             if (state.died) {
                 clearInterval(window.fnInterval);
             }
 
-            // Snake eats
             tail.unshift({
                 row: head.row,
                 col: head.col,
             })
 
-            // Snake does potty, only when not eating
-            if (head.row === state.food.row && head.col === state.food.col) {
-                food = this.getRandomGrid();
+            if (head.row === state.apple.row && head.col === state.apple.col) {
+                apple = this.getRandomGrid();
             } else {
                 tail.pop();
             }
 
-            if (head.row === tail.row || head.col === tail.col) {
-                died = true;
+            for (let count = 1; count < tail.length; count++) {
+                if (head.row === tail[count].row && head.col === tail[count].col) {
+                    died = true;
+                }
             }
 
-            if (this.state.score === 100) {
+            if (this.state.score !== this.state.lastScoreup && this.state.score % 100 === 0) {
                 this.levelUp();
             }
 
-            // Snake moves head
             switch (currentDirection) {
                 case 'left':
                     head.col--;
@@ -152,14 +153,13 @@ export default class Snake extends Component {
 
             const newState = {
                 ...state,
-                food,
+                apple,
                 snake: {
                     head,
                     tail
                 }
             }
 
-            // In new state, check if die conditions are met
             if (newState.snake.head.row < 0 ||
                 newState.snake.head.row >= this.state.rows ||
                 newState.snake.head.col < 0 ||
@@ -169,7 +169,7 @@ export default class Snake extends Component {
             }
 
             const grid = this.resetGrid(newState, true);
-            const score = newState.snake.tail.length * newState.scoreFactor;
+            const score = (newState.snake.tail.length / 2) * newState.scoreFactor;
 
             return {
                 ...newState,
@@ -222,14 +222,19 @@ export default class Snake extends Component {
 
     levelUp() {
         this.setState((state) => {
+
+
             const newState = {
                 ...state,
-                tickTime: this.state.tickTime - 20,
+                speed: this.state.speed - 20,
             };
             const grid = this.resetGrid(newState, true);
+            const newLevel = this.state.level + 1;
             return {
                 ...newState,
                 grid,
+                level: newLevel,
+                lastScoreup: this.state.score
             }
         });
     }
@@ -238,7 +243,7 @@ export default class Snake extends Component {
         this.setState((state) => {
             const newState = {
                 ...state,
-                food: this.getRandomGrid(),
+                apple: this.getRandomGrid(),
                 snake: {
                     head: this.getRandomGrid(),
                     tail: [],
@@ -256,7 +261,7 @@ export default class Snake extends Component {
 
         window.fnInterval = setInterval(() => {
             this.gameTick();
-        }, this.state.tickTime);
+        }, this.state.speed);
     }
 
     componentDidMount() {
@@ -266,7 +271,7 @@ export default class Snake extends Component {
         this.setState((state) => {
             const newState = {
                 ...state,
-                food: this.getRandomGrid(),
+                apple: this.getRandomGrid(),
                 snake: {
                     head: this.getCenterOfGrid(),
                     tail: state.snake.tail
@@ -284,7 +289,7 @@ export default class Snake extends Component {
         // Set tick
         window.fnInterval = setInterval(() => {
             this.gameTick();
-        }, this.state.tickTime);
+        }, this.state.speed);
     }
 
     componentWillUnmount() {
@@ -299,8 +304,8 @@ export default class Snake extends Component {
                 className={
                     grid.isHead
                         ? 'gridItem is-head' : grid.isTail
-                            ? 'gridItem is-tail' : grid.isFood
-                                ? 'gridItem is-food' : 'gridItem'
+                            ? 'gridItem is-tail' : grid.isApple
+                                ? 'gridItem is-apple' : 'gridItem'
                 }></div>
         });
         if (this.state.died) {
@@ -313,6 +318,8 @@ export default class Snake extends Component {
                 <div className="grid-header">
                     <h1>Score : {this.state.score}</h1>
                 </div>
+                <div><h1>
+                    lvl: {this.state.level}</h1></div>
                 <div className="grid">{gridContent}</div>
                 <button className="resetButton" onClick={() => this.resetGame()}>Recomeçar</button>
             </div>
